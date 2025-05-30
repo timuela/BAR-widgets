@@ -4,4 +4,4 @@ When ingame press F11 then scroll to the bottom to turn on then turn off, the wi
 
 It will check if you're playing Full Metal Plate map or not.
 
-![Grid](Grid.png)
+![Grid](Grid1.png)
