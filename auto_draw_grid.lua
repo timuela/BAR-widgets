@@ -1,8 +1,8 @@
 function widget:GetInfo()
     return {
         name      = "Auto Draw Grid",
-        desc      = "Draws grid for 12 players in NuttyB Raptor",
-        author    = "timuela",
+        desc      = "Draws grid for 12 players in NuttyB Raptor, line by line",
+        author    = "timuela, adapted for progressive draw",
         date      = "2025",
         layer     = 1,
         enabled   = true
@@ -43,16 +43,24 @@ local function CollectGridLines()
     -- Horizontal lines
     AddLine(square*14, 0, quarterZ-576, square*16, 0, quarterZ-576)
     AddLine(square*16, 0, quarterZ-576, square*23, 0, quarterZ-576)
+    AddLine(square*16, 0, quarterZ-384, square*23, 0, quarterZ-384)
     AddLine(square*25, 0, quarterZ-576, square*32, 0, quarterZ-576)
+    AddLine(square*25, 0, quarterZ-384, square*32, 0, quarterZ-384)
     AddLine(square*32, 0, quarterZ-576, square*39, 0, quarterZ-576)
+    AddLine(square*32, 0, quarterZ-384, square*39, 0, quarterZ-384)
     AddLine(square*41, 0, quarterZ-576, square*48, 0, quarterZ-576)
+    AddLine(square*41, 0, quarterZ-384, square*48, 0, quarterZ-384)
     AddLine(square*48, 0, quarterZ-576, square*50, 0, quarterZ-576)
 
     AddLine(square*14, 0, threeQuarterZ+576, square*16, 0, threeQuarterZ+576)
     AddLine(square*16, 0, threeQuarterZ+576, square*23, 0, threeQuarterZ+576)
+    AddLine(square*16, 0, threeQuarterZ+384, square*23, 0, threeQuarterZ+384)
     AddLine(square*25, 0, threeQuarterZ+576, square*32, 0, threeQuarterZ+576)
+    AddLine(square*25, 0, threeQuarterZ+384, square*32, 0, threeQuarterZ+384)
     AddLine(square*32, 0, threeQuarterZ+576, square*39, 0, threeQuarterZ+576)
+    AddLine(square*32, 0, threeQuarterZ+384, square*39, 0, threeQuarterZ+384)
     AddLine(square*41, 0, threeQuarterZ+576, square*48, 0, threeQuarterZ+576)
+    AddLine(square*41, 0, threeQuarterZ+384, square*48, 0, threeQuarterZ+384)
     AddLine(square*48, 0, threeQuarterZ+576, square*50, 0, threeQuarterZ+576)
 
     AddLine(0, 0, quarterZ, square*13, 0, quarterZ)
@@ -61,22 +69,30 @@ local function CollectGridLines()
     AddLine(square*51, 0, threeQuarterZ, msx, 0, threeQuarterZ)
 
     -- Vertical lines
-    AddLine(quarterX-575, 0, square*14, quarterX-575, 0, square*16)
-    AddLine(quarterX-575, 0, square*16, quarterX-575, 0, square*23)
-    AddLine(quarterX-575, 0, square*25, quarterX-575, 0, square*32)
-    AddLine(quarterX-575, 0, square*32, quarterX-575, 0, square*39)
-    AddLine(quarterX-575, 0, square*41, quarterX-575, 0, square*48)
-    AddLine(quarterX-575, 0, square*48, quarterX-575, 0, square*50)
+    AddLine(quarterX-576, 0, square*14, quarterX-576, 0, square*16)
+    AddLine(quarterX-576, 0, square*16, quarterX-576, 0, square*23)
+    AddLine(quarterX-384, 0, square*16, quarterX-384, 0, square*23)
+    AddLine(quarterX-576, 0, square*25, quarterX-576, 0, square*32)
+    AddLine(quarterX-384, 0, square*25, quarterX-384, 0, square*32)
+    AddLine(quarterX-576, 0, square*32, quarterX-576, 0, square*39)
+    AddLine(quarterX-384, 0, square*32, quarterX-384, 0, square*39)
+    AddLine(quarterX-576, 0, square*41, quarterX-576, 0, square*48)
+    AddLine(quarterX-384, 0, square*41, quarterX-384, 0, square*48)
+    AddLine(quarterX-576, 0, square*48, quarterX-576, 0, square*50)
     AddLine(quarterX, 0, 0, quarterX, 0, square*13)
     AddLine(quarterX, 0, square*51, quarterX, 0, msz)
     AddLine(threeQuarterX, 0, 0, threeQuarterX, 0, square*13)
     AddLine(threeQuarterX, 0, square*51, threeQuarterX, 0, msz)
-    AddLine(threeQuarterX+575, 0, square*14, threeQuarterX+575, 0, square*16)
-    AddLine(threeQuarterX+575, 0, square*16, threeQuarterX+575, 0, square*23)
-    AddLine(threeQuarterX+575, 0, square*25, threeQuarterX+575, 0, square*32)
-    AddLine(threeQuarterX+575, 0, square*32, threeQuarterX+575, 0, square*39)
-    AddLine(threeQuarterX+575, 0, square*41, threeQuarterX+575, 0, square*48)
-    AddLine(threeQuarterX+575, 0, square*48, threeQuarterX+575, 0, square*50)
+    AddLine(threeQuarterX+576, 0, square*14, threeQuarterX+576, 0, square*16)
+    AddLine(threeQuarterX+576, 0, square*16, threeQuarterX+576, 0, square*23)
+    AddLine(threeQuarterX+384, 0, square*16, threeQuarterX+384, 0, square*23)
+    AddLine(threeQuarterX+576, 0, square*25, threeQuarterX+576, 0, square*32)
+    AddLine(threeQuarterX+384, 0, square*25, threeQuarterX+384, 0, square*32)
+    AddLine(threeQuarterX+576, 0, square*32, threeQuarterX+576, 0, square*39)
+    AddLine(threeQuarterX+384, 0, square*32, threeQuarterX+384, 0, square*39)
+    AddLine(threeQuarterX+576, 0, square*41, threeQuarterX+576, 0, square*48)
+    AddLine(threeQuarterX+384, 0, square*41, threeQuarterX+384, 0, square*48)
+    AddLine(threeQuarterX+576, 0, square*48, threeQuarterX+576, 0, square*50)
 end
 
 function widget:Initialize()
