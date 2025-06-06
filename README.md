@@ -21,4 +21,4 @@ Ins: Instant
 
 Credit to original author: manshanko
 
-![Holo](Holo Place.png)
+![Holo](HoloPlace.png)
