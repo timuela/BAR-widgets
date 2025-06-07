@@ -166,6 +166,18 @@ function widget:CommandNotify(cmd_id, cmd_params, cmd_options)
     end
 end
 
+local CMD_WAIT = CMD.WAIT
+
+local function unitHasWait(unit_id)
+    local cmds = GetUnitCommands(unit_id, 20)
+    for i = 1, #cmds do
+        if cmds[i].id == CMD_WAIT then
+            return true
+        end
+    end
+    return false
+end
+
 function widget:GameFrame()
     for unit_id, builder in pairs(HOLO_PLACERS) do
         local target_id = GetUnitIsBuilding(unit_id)
@@ -191,19 +203,21 @@ function widget:GameFrame()
             for i=1, #nt_ids do
                 local nt_id = nt_ids[i]
                 local cmds = GetUnitCommands(nt_id, 2)
-
                 if (cmds[2] and cmds[2].id == CMD_FIGHT)
                     or (cmds[1] and cmds[1].id == CMD_FIGHT)
                 then
-                    local _, _, tag = GetUnitCurrentCommand(unit_id)
-                    builder.nt_id = nt_id
-                    builder.tick = 0
-                    builder.building_id = target_id
-                    builder.cmd_tag = tag
-                    if not builder.threshold then
-                        builder.threshold = HOLO_THRESHOLDS[CMD_HOLO_PLACE_DESCRIPTION.params[1]] or 0.6
+                    -- Check wait status and if nano is already building before issuing order
+                    if not unitHasWait(nt_id) and not unitHasWait(unit_id) and not GetUnitIsBuilding(nt_id) then
+                        local _, _, tag = GetUnitCurrentCommand(unit_id)
+                        builder.nt_id = nt_id
+                        builder.tick = 0
+                        builder.building_id = target_id
+                        builder.cmd_tag = tag
+                        if not builder.threshold then
+                            builder.threshold = HOLO_THRESHOLDS[CMD_HOLO_PLACE_DESCRIPTION.params[1]] or 0.6
+                        end
+                        GiveOrderToUnit(nt_id, CMD_REPAIR, target_id, 0)
                     end
-                    GiveOrderToUnit(nt_id, CMD_REPAIR, target_id, 0)
                     break
                 end
             end
