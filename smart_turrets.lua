@@ -168,7 +168,7 @@ function widget:GameFrame(n)
 
     -- Decide targets based on converter usage
     local CONVERTER_STABLE_TIME = 5 -- seconds of stable 100% usage to switch to converters
-    local ENERGY_STORAGE_THRESHOLD = 30 -- percent energy storage to consider converters stable
+    local ENERGY_STORAGE_THRESHOLD = 50 -- percent energy storage to consider converters stable
     local targets = nil
 
     if converterUsage < 100 and #reactors > 0 then
