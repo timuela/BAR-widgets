@@ -16,10 +16,10 @@ local msx = Game.mapSizeX
 local msz = Game.mapSizeZ
 local centerX = msx / 2
 local centerZ = msz / 2
-local quarterX = msx / 4           
-local quarterZ = msz / 4          
-local threeQuarterX = msx * 3/4    
-local threeQuarterZ = msz * 3/4    
+local quarterX = msx / 4
+local quarterZ = msz / 4
+local threeQuarterX = msx * 3/4
+local threeQuarterZ = msz * 3/4
 local square = 192
 
 -- Progressive draw state
