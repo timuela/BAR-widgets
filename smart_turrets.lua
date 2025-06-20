@@ -126,39 +126,49 @@ function widget:GameFrame(n)
 
     -- Find all converters under construction
     local converters = {}
-    for _, unitID in ipairs(Spring.GetAllUnits()) do
+    local myTeamID = Spring.GetMyTeamID()
+    for _, unitID in ipairs(Spring.GetTeamUnits(myTeamID)) do
         local defID = Spring.GetUnitDefID(unitID)
         if CONVERTER_DEF_IDS[defID] then
-            local x, _, z = Spring.GetUnitPosition(unitID)
-            local _, _, _, _, build = Spring.GetUnitHealth(unitID)
-            if build and build < 1 then
-                converters[#converters+1] = {id=unitID, x=x, z=z}
+            local unitTeam = Spring.GetUnitTeam(unitID)
+            if unitTeam == myTeamID then
+                local x, _, z = Spring.GetUnitPosition(unitID)
+                local _, _, _, _, build = Spring.GetUnitHealth(unitID)
+                if build and build < 1 then
+                    converters[#converters+1] = {id=unitID, x=x, z=z}
+                end
             end
         end
     end
 
     -- Find all reactors under construction
     local reactors = {}
-    for _, unitID in ipairs(Spring.GetAllUnits()) do
+    for _, unitID in ipairs(Spring.GetTeamUnits(myTeamID)) do
         local defID = Spring.GetUnitDefID(unitID)
         if REACTOR_DEF_IDS[defID] then
-            local x, _, z = Spring.GetUnitPosition(unitID)
-            local _, _, _, _, build = Spring.GetUnitHealth(unitID)
-            if build and build < 1 then
-                reactors[#reactors+1] = {id=unitID, x=x, z=z}
+            local unitTeam = Spring.GetUnitTeam(unitID)
+            if unitTeam == myTeamID then
+                local x, _, z = Spring.GetUnitPosition(unitID)
+                local _, _, _, _, build = Spring.GetUnitHealth(unitID)
+                if build and build < 1 then
+                    reactors[#reactors+1] = {id=unitID, x=x, z=z}
+                end
             end
         end
     end
 
     -- Find all turrets under construction
     local turrets = {}
-    for _, unitID in ipairs(Spring.GetAllUnits()) do
+    for _, unitID in ipairs(Spring.GetTeamUnits(myTeamID)) do
         local defID = Spring.GetUnitDefID(unitID)
         if TURRET_DEF_IDS[defID] then
-            local x, _, z = Spring.GetUnitPosition(unitID)
-            local _, _, _, _, build = Spring.GetUnitHealth(unitID)
-            if build and build < 1 then
-                turrets[#turrets+1] = {id=unitID, x=x, z=z}
+            local unitTeam = Spring.GetUnitTeam(unitID)
+            if unitTeam == myTeamID then
+                local x, _, z = Spring.GetUnitPosition(unitID)
+                local _, _, _, _, build = Spring.GetUnitHealth(unitID)
+                if build and build < 1 then
+                    turrets[#turrets+1] = {id=unitID, x=x, z=z}
+                end
             end
         end
     end
@@ -168,13 +178,13 @@ function widget:GameFrame(n)
 
     -- Decide targets based on converter usage
     local CONVERTER_STABLE_TIME = 5 -- seconds of stable 100% usage to switch to converters
-    local ENERGY_STORAGE_THRESHOLD = 50 -- percent energy storage to consider converters stable
+    local ENERGY_STORAGE_THRESHOLD = 30 -- percent energy storage to consider converters stable
     local targets = nil
 
-    if converterUsage < 100 and #reactors > 0 then
-        targets = reactors
-    elseif metalStoragePercent > 10 and #turrets > 0 then
+    if energyStoragePercent >= ENERGY_STORAGE_THRESHOLD and metalStoragePercent > 10 and #turrets > 0 then
         targets = turrets
+    elseif converterUsage < 100 and #reactors > 0 then
+        targets = reactors
     elseif converterFullStreak * updateInterval >= CONVERTER_STABLE_TIME and energyStoragePercent >= ENERGY_STORAGE_THRESHOLD and #converters > 0 then
         targets = converters
     else
@@ -207,13 +217,18 @@ function widget:GameFrame(n)
             end
 
             if #inRangeTargets > 0 then
-                -- Check if already assisting/building any in-range target, or reclaiming something
+                -- Check if already assisting/building any in-range target, or reclaiming or resurrecting something
                 local cmds = Spring.GetUnitCommands(unitID, 10)
                 local already = false
                 local reclaiming = false
+                local resurrecting = false
                 for _, cmd in ipairs(cmds) do
                     if cmd.id == CMD.RECLAIM then
                         reclaiming = true
+                        break
+                    end
+                    if cmd.id == CMD.RESURRECT then
+                        resurrecting = true
                         break
                     end
                     if cmd.id == CMD.REPAIR or cmd.id == CMD.GUARD or cmd.id == CMD.BUILD then
@@ -227,7 +242,7 @@ function widget:GameFrame(n)
                     if already then break end
                 end
 
-                if not already and not reclaiming then
+                if not already and not reclaiming and not resurrecting then
                     -- Pick the closest in-range target to assist
                     local closest = inRangeTargets[1]
                     local minDist = distance2D(ux, uz, closest.x, closest.z)
