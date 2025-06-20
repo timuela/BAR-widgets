@@ -181,7 +181,7 @@ function widget:GameFrame(n)
     local ENERGY_STORAGE_THRESHOLD = 30 -- percent energy storage to consider converters stable
     local targets = nil
 
-    if energyStoragePercent >= ENERGY_STORAGE_THRESHOLD and metalStoragePercent > 10 and #turrets > 0 then
+    if metalStoragePercent > 10 and #turrets > 0 then
         targets = turrets
     elseif converterUsage < 100 and #reactors > 0 then
         targets = reactors
