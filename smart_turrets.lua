@@ -102,6 +102,57 @@ end
 local lastUpdateTime = 0
 local updateInterval = 1
 local converterFullStreak = 0
+local watchedBuildTurrets = {}
+
+local function hasEmptyBuildQueue(unitID)
+    local cmds = Spring.GetUnitCommands(unitID, 2)
+    if not cmds or #cmds == 0 then
+        return true
+    end
+    if #cmds == 1 and (cmds[1].id == CMD.FIGHT or cmds[1].id == CMD.STOP) then
+        return true
+    end
+    return false
+end
+
+local function isBuildTurret(unitID)
+    local defID = Spring.GetUnitDefID(unitID)
+    if TURRET_DEF_IDS[defID] then
+        return true
+    end
+    return false
+end
+
+function widget:UnitCmdDone(unitID)
+    if hasEmptyBuildQueue(unitID) and isBuildTurret(unitID) then
+        watchedBuildTurrets[unitID] = true
+    end
+end
+
+function widget:CommandNotify(cmdID, cmdParams, cmdOpts)
+    selectedUnits = Spring.GetSelectedUnits()
+
+    for _,orderedUnit in ipairs(selectedUnits) do
+        if isBuildTurret(orderedUnit) then
+            watchedBuildTurrets[orderedUnit] = nil
+        end
+    end
+end
+
+function widget:Initialize()
+    local myTeamID = Spring.GetMyTeamID()
+    for _, unitID in ipairs(Spring.GetTeamUnits(myTeamID)) do
+        if isBuildTurret(unitID) and hasEmptyBuildQueue(unitID) then
+            watchedBuildTurrets[unitID] = true
+        end
+    end
+end
+
+function widget:UnitFinished(unitID, unitDefID, unitTeam)
+    if unitTeam == Spring.GetMyTeamID() and isBuildTurret(unitID) and hasEmptyBuildQueue(unitID) then
+        watchedBuildTurrets[unitID] = true
+    end
+end
 
 function widget:GameFrame(n)
     local now = Spring.GetTimer()
@@ -187,15 +238,14 @@ function widget:GameFrame(n)
         targets = reactors
     elseif converterFullStreak * updateInterval >= CONVERTER_STABLE_TIME and energyStoragePercent >= ENERGY_STORAGE_THRESHOLD and #converters > 0 then
         targets = converters
-    else
-        return
     end
+
     if not targets or #targets == 0 then return end
 
     -- For each nano turret, check for in-range targets and force assist
     for _, unitID in ipairs(Spring.GetTeamUnits(Spring.GetMyTeamID())) do
         local defID = Spring.GetUnitDefID(unitID)
-        if TURRET_DEF_IDS[defID] then
+        if TURRET_DEF_IDS[defID] and watchedBuildTurrets[unitID] then
             local ux, _, uz = Spring.GetUnitPosition(unitID)
             local buildRange = UnitDefs[defID].buildDistance or 300
             -- Gather all in-range targets
