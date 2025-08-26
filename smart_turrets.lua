@@ -228,17 +228,38 @@ function widget:GameFrame(n)
     local energyStoragePercent = GetEnergyStoragePercent()
 
     -- Decide targets based on converter usage
-    local CONVERTER_STABLE_TIME = 5 -- seconds of stable 100% usage to switch to converters
+    local CONVERTER_STABLE_TIME = 2 -- seconds of stable 100% usage to switch to converters
     local ENERGY_STORAGE_THRESHOLD = 30 -- percent energy storage to consider converters stable
     local targets = nil
 
-    if metalStoragePercent > 10 and #turrets > 0 then
-        targets = turrets
-    elseif converterUsage < 100 and #reactors > 0 then
+    -- Decide which type of building (reactors, turrets, converters) the idle nano turrets should assist
+
+    if energyStoragePercent < 5 and #reactors > 0 then
+        -- If energy storage is critically low (<5%)
+        -- and there are turrets under construction,
+        -- prioritize finishing turrets to defend yourself quickly.
         targets = reactors
+
+    elseif metalStoragePercent > 10 and #turrets > 0 then
+        -- If you have more than 10% metal stored
+        -- and there are turrets being built,
+        -- use the extra metal to rush turret construction (defense).
+        targets = turrets
+
+    elseif converterUsage < 100 and #reactors > 0 then
+        -- If metal-to-energy converters are not running at full capacity (<100%)
+        -- and reactors are under construction,
+        -- focus nano turrets on helping reactors to increase energy income.
+        targets = reactors
+
     elseif converterFullStreak * updateInterval >= CONVERTER_STABLE_TIME and energyStoragePercent >= ENERGY_STORAGE_THRESHOLD and #converters > 0 then
+        -- If converters have been fully saturated for a stable period (e.g. 2s),
+        -- AND you have enough energy in storage (>=30% by default),
+        -- AND converters are under construction,
+        -- then prioritize finishing converters to expand conversion capacity.
         targets = converters
     end
+
 
     if not targets or #targets == 0 then return end
 
