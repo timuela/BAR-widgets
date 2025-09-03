@@ -40,7 +40,7 @@ Credit to original author: manshanko
 * Penguin
 * Mini-queens
 * Matrona (basic, fire, electric, acid)
-* Consorts, Doom Bringers.
+* Doom Bringers.
 
 **Features**
 * Toggle Auto DGun On/Off in the command menu
