@@ -22,3 +22,20 @@ Ins: Instant
 Credit to original author: manshanko
 
 ![Holo](HoloPlace.png)
+
+**What it does**
+* Makes your commander auto-DGun dangerous enemies in range (600)
+**Targets**
+* Raptor Queens
+* Penguin
+* Mini-queens
+* Matrona (basic, fire, electric, acid)
+* Consorts, Doom Bringers.
+**Features**
+* Toggle Auto DGun On/Off in the command menu
+* Works only with commanders
+* Checks every 0.5s
+* Console feedback when commander fires
+:warning: **Cons**
+* Fires at the position, not the target → if Repeat is ON, your commander may keep DGunning even after the target is dead
+* Will not discriminate → your neighbor’s units could get fried if they’re in the way
