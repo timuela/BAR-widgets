@@ -4,7 +4,7 @@ When ingame press F11 then scroll to the bottom to turn on then turn off, the wi
 
 It will check if you're playing Full Metal Plate map or not.
 
-![Grid](Grid1.png)
+![grid](grid1.png)
 
 # Added more options to Holo Place
 Automatically place the next building in your build queue once the current structure reaches a defined completion threshold. This helps maintain building momentum by minimizing idle time as the construction unit walks between placement locations.
@@ -21,7 +21,9 @@ Ins: Instant
 
 Credit to original author: manshanko
 
-![Holo](HoloPlace.png)
+![holo](holoplace.png)
+
+# Auto Dgun for nuttyb raptor
 
 **What it does**
 * Makes your commander auto-DGun dangerous enemies in range (600)
@@ -36,6 +38,8 @@ Credit to original author: manshanko
 * Works only with commanders
 * Checks every 0.5s
 * Console feedback when commander fires
-:warning: **Cons**
+**Cons**
 * Fires at the position, not the target → if Repeat is ON, your commander may keep DGunning even after the target is dead
 * Will not discriminate → your neighbor’s units could get fried if they’re in the way
+
+![autodgun](autodgun.png)
