@@ -79,7 +79,7 @@ Credit to original author: manshanko
 
 **Why use it?**
 
-- Clout farming **Yay i killed 4 queens**
+- Clout farming "**Yay i killed 4 queens**"
 
 [Download Queen Ping](https://github.com/timuela/BAR-widgets/blob/main/queen_ping.lua)
 
