@@ -24,9 +24,9 @@ Ins: Instant
 
 Credit to original author: manshanko
 
-[Download Holo Place (Default, will force a turret to assist, if no available turrets, it'll pause)](https://github.com/timuela/BAR-widgets/blob/main/holo_place.lua)
+[Download Holo Place (Default version, will force a turret to assist, if no available turrets, it'll pause)](https://github.com/timuela/BAR-widgets/blob/main/holo_place.lua)
 
-[Download Holo Place (Ignore turrets requirement.)](https://github.com/timuela/BAR-widgets/blob/main/holo_place_no_hijacking.lua)
+[Download Holo Place (No-hijacking version, ignore turrets requirement.)](https://github.com/timuela/BAR-widgets/blob/main/holo_place_no_hijacking.lua)
 
 ![holo](holoplace.png)
 
