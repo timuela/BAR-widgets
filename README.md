@@ -4,7 +4,7 @@ When ingame press F11 then scroll to the bottom to turn on then turn off, the wi
 
 It will check if you're playing Full Metal Plate map or not.
 
-![grid](grid1.png)
+![grid](grid.png)
 
 # Added more options to Holo Place
 Automatically place the next building in your build queue once the current structure reaches a defined completion threshold. This helps maintain building momentum by minimizing idle time as the construction unit walks between placement locations.
