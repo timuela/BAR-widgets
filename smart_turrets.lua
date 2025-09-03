@@ -2,7 +2,7 @@ function widget:GetInfo()
     return {
         name = "Smart Construction Turret",
         desc = "Forces nano turrets to assist based on your energy and metal situation",
-        author = "timuela",
+        author = "augustin",
         date = "2025-06-15",
         layer = 0,
         enabled = true,

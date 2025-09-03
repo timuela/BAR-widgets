@@ -2,7 +2,7 @@ function widget:GetInfo()
     return {
         name    = "Holo Place",
         desc    = "Start next holo if assisted and force guarding nano turrets to assist",
-        author  = "manshanko",
+        author  = "augustin, manshanko",
         date    = "2025-04-14",
         layer   = 2,
         enabled = false,

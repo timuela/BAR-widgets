@@ -2,7 +2,7 @@ function widget:GetInfo()
     return {
         name      = "Auto Draw Grid",
         desc      = "Draws grid for 12 players in NuttyB Raptor, line by line",
-        author    = "timuela, adapted for progressive draw",
+        author    = "augustin",
         date      = "2025",
         layer     = 1,
         enabled   = true
