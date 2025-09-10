@@ -6,7 +6,7 @@ It will check if you're playing Full Metal Plate map or not.
 
 [Download Auto Draw Grid](https://github.com/timuela/BAR-widgets/blob/main/auto_draw_grid.lua)
 
-![grid](grid.png)
+![grid](img/grid.png)
 
 # Added more options to Holo Place
 
@@ -28,7 +28,7 @@ Credit to original author: manshanko
 
 [Download Holo Place (No-hijacking version, ignore turrets requirement.)](https://github.com/timuela/BAR-widgets/blob/main/holo_place_no_hijacking.lua)
 
-![holo](holoplace.png)
+![holo](img/holoplace.png)
 
 # Auto Dgun for nuttyb raptor
 
@@ -58,7 +58,7 @@ Credit to original author: manshanko
 
 [Download Auto DGun](https://github.com/timuela/BAR-widgets/blob/main/auto_dgun.lua)
 
-![autodgun](autodgun.png)
+![autodgun](img/autodgun.png)
 
 # Queen Ping for nuttyb raptor
 
@@ -83,4 +83,4 @@ Credit to original author: manshanko
 
 [Download Queen Ping](https://github.com/timuela/BAR-widgets/blob/main/queen_ping.lua)
 
-![queen_ping](queen_ping.png)
+![queen_ping](img/queen_ping.png)
