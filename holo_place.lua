@@ -206,8 +206,7 @@ function widget:GameFrame()
                 if (cmds[2] and cmds[2].id == CMD_FIGHT)
                     or (cmds[1] and cmds[1].id == CMD_FIGHT)
                 then
-                    -- Check wait status and if nano is already building before issuing order
-                    if not unitHasWait(nt_id) and not unitHasWait(unit_id) and not GetUnitIsBuilding(nt_id) then
+                    if not unitHasWait(nt_id) and not unitHasWait(unit_id)  then
                         local _, _, tag = GetUnitCurrentCommand(unit_id)
                         builder.nt_id = nt_id
                         builder.tick = 0
