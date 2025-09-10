@@ -74,7 +74,6 @@ Credit to original author: manshanko
 **Features**
 
 - Clear **visual ping** at the exact death location
-- Uses **red color** for instant recognition
 - Helps your team **know how many queens was killed at your doorstep**
 
 **Why use it?**
