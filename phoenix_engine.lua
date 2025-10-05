@@ -10,7 +10,6 @@ function widget:GetInfo()
     }
 end
 
--- Spring API shortcuts
 local echo = Spring.Echo
 local i18n = Spring.I18N
 local GetSelectedUnits       = Spring.GetSelectedUnits
@@ -28,7 +27,6 @@ local GetUnitIsBeingBuilt    = Spring.GetUnitIsBeingBuilt
 local UnitDefs               = UnitDefs
 local CMD_RECLAIM            = CMD.RECLAIM
 
--- Command definitions for Auto Replace toggle
 local CMD_AUTO_REPLACE = 28341
 local CMDTYPE = CMDTYPE or { ICON_MODE = 5 }
 
@@ -45,7 +43,7 @@ i18n.set("en.ui.orderMenu." .. CMD_AUTO_REPLACE_DESCRIPTION.params[2], "Auto Rep
 i18n.set("en.ui.orderMenu." .. CMD_AUTO_REPLACE_DESCRIPTION.params[3], "Auto Replace On")
 i18n.set("en.ui.orderMenu." .. CMD_AUTO_REPLACE_DESCRIPTION.action .. "_tooltip", "Automatically reclaim blocking units when placing buildings")
 
--- Target units that can be reclaimed (add more as needed)
+-- Target units that can be reclaimed
 local TARGET_UNITDEF_NAMES = {
     "armnanotc", "armnanotcplat", "armnanotct2", "armnanotc2plat", "armnanotct3",
     "cornanotc", "cornanotcplat", "cornanotct2", "cornanotc2plat", "cornanotct3",
@@ -189,7 +187,7 @@ local function isAutoReplaceEnabledForSelection()
     return false
 end
 
--- Precompute nano-type units (non-moving builders, non-factories) & their buildDistance
+-- Precompute nano-type units
 local MAX_NANO_DISTANCE = 0
 for udid, ud in pairs(UnitDefs) do
     if ud.isBuilder and (not ud.canMove) and (not ud.isFactory) then
@@ -302,7 +300,6 @@ end
 local tasksCoroutine = nil
 local function startTasksCoroutine(fn)
     tasksCoroutine = coroutine.wrap(fn)
-    -- run once immediately (and then GameFrame will continue it)
     local ok, err = pcall(tasksCoroutine)
     if not ok then
         Spring.Echo("Phoenix Engine: task error: "..tostring(err))
@@ -340,9 +337,7 @@ function widget:GameFrame(n)
                 if not AUTO_REPLACE_ENABLED[builderID] then
                     cleanupBuilderPipeline(builderID)
                 else
-                    -- Sort pending builds by order to ensure sequential processing
                     table.sort(pipeline.pendingBuilds, function(a, b) return a.order < b.order end)
-                    
                     -- Fill the pipeline up to PIPELINE_SIZE builds for this builder
                     while #pipeline.currentlyProcessing < PIPELINE_SIZE and #pipeline.pendingBuilds > 0 do
                         local nextBuild = pipeline.pendingBuilds[1]
@@ -395,26 +390,23 @@ function widget:GameFrame(n)
                                                 end
                                             end
                                         end
-                                        -- Use shuffle mode with current blockers and fresh nano list
                                         giveReclaimOrdersFromNanos(retryNanos, currentBlockers)
                                     end
                                 else
-                                    -- First attempt, use captured nano/blocker lists
                                     giveReclaimOrdersFromNanos(p.nanos, p.blockers)
                                 end
                             end
                             pipeline.reclaimStarted[p.order] = true
                             pipeline.lastReclaimAttempt[p.order] = currentFrame
                         end
-                        
-                        -- Check if this build is under construction
+
                         if pipeline.buildingsUnderConstruction[p.order] then
                             -- Building is being built, check if it's complete
                             local buildCompleted = false
                             local constructionInfo = pipeline.buildingsUnderConstruction[p.order]
                             local wx, wz = constructionInfo.position[1], constructionInfo.position[2]
                             local hx, hz = constructionInfo.footprint[1], constructionInfo.footprint[2]
-                            
+
                             -- Find units in the build area
                             local unitsInArea = GetUnitsInRectangle(wx - hx, wz - hz, wx + hx, wz + hz)
                             for _, uid in ipairs(unitsInArea) do
@@ -436,7 +428,6 @@ function widget:GameFrame(n)
                                 pipeline.reclaimRetries[p.order] = nil
                                 pipeline.lastReclaimAttempt[p.order] = nil
                                 table.remove(pipeline.currentlyProcessing, i)
-                                -- Don't increment i since we removed an element
                             else
                                 i = i + 1
                             end
@@ -467,7 +458,6 @@ function widget:GameFrame(n)
                                     pipeline.reclaimRetries[p.order] = nil
                                     pipeline.lastReclaimAttempt[p.order] = nil
                                     table.remove(pipeline.currentlyProcessing, i)
-                                    -- Don't increment i since we removed an element
                                 end
                             else
                                 i = i + 1
@@ -504,12 +494,12 @@ function widget:CommandNotify(cmdID, cmdParams, cmdOptions)
         checkUnits(true)
         return true
     end
-    
+
     -- only react to build commands (negative numbers) if auto replace is enabled
     if (type(cmdID) ~= "number") or cmdID >= 0 then
         return false
     end
-    
+
     -- Check if auto replace is enabled for any selected builders
     if not isAutoReplaceEnabledForSelection() then
         return false
@@ -572,7 +562,7 @@ function widget:CommandNotify(cmdID, cmdParams, cmdOptions)
     buildOrderCounter = buildOrderCounter + 1
     local thisOrder = buildOrderCounter
 
-    -- Determine which builder to assign this build to (use the first selected builder with AutoReplace enabled)
+    -- Determine which builder to assign this build to
     local assignedBuilderID = nil
     for _, builderID in ipairs(capturedBuilders) do
         if AUTO_REPLACE_ENABLED[builderID] then
@@ -604,26 +594,21 @@ function widget:CommandNotify(cmdID, cmdParams, cmdOptions)
     return true
 end
 
--- Clean up when units are destroyed or taken
 widget.UnitDestroyed = function(_, unitID)
     AUTO_REPLACE_ENABLED[unitID] = nil
-    -- Clean up the builder's pipeline when it's destroyed
     cleanupBuilderPipeline(unitID)
-    -- Invalidate nano cache if a nano was destroyed
     if nanoCache.turrets[unitID] then
         nanoCache.needsUpdate = true
     end
 end
 widget.UnitTaken = widget.UnitDestroyed
 
--- Handle new units (potential nanos)
 widget.UnitFinished = function(_, unitID, unitDefID)
     if NANO_DEFS[unitDefID] then
         nanoCache.needsUpdate = true
     end
 end
 
--- Handle units given to us
 widget.UnitGiven = function(_, unitID, unitDefID)
     if NANO_DEFS[unitDefID] then
         nanoCache.needsUpdate = true
