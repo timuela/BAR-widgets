@@ -3,7 +3,7 @@ function widget:GetInfo()
         name    = "Holo Place - No hijack",
         desc    = "Start next holo immediately without checking for assisting turrets",
         author  = "augustin, manshanko",
-        date    = "2025-09-10",
+        date    = "2025-04-14",
         layer   = 2,
         enabled = false,
         handler = true,
