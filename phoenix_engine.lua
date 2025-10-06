@@ -23,6 +23,8 @@ local GetUnitsInRectangle = Spring.GetUnitsInRectangle
 local GetUnitIsBeingBuilt = Spring.GetUnitIsBeingBuilt
 local UnitDefs = UnitDefs
 local CMD_RECLAIM = CMD.RECLAIM
+local CMD_INSERT = CMD.INSERT
+local CMD_OPT_SHIFT = CMD.OPT_SHIFT
 
 -- Command definitions
 local CMD_AUTO_REPLACE = 28341
@@ -84,7 +86,9 @@ local MAX_RECLAIM_RETRIES = 200
 -- States
 local AUTO_REPLACE_ENABLED, builderPipelines, buildOrderCounter = {}, {}, 0
 local nanoCache = { turrets = {}, lastUpdate = 0, needsUpdate = true }
-local visualIndicators = {} -- Store visual indicators for each builder pipeline
+local visualIndicators = {}
+local ALT = { "alt" }
+local CMD_CACHE = { 0, CMD_RECLAIM, CMD_OPT_SHIFT, 0 }
 
 -- Helper functions
 local function getBuilderPipeline(builderID)
@@ -117,22 +121,22 @@ local function updateNanoCache()
 end
 
 local function nanosNearUnit(targetUnitID)
-	local x, y, z = GetUnitPosition(targetUnitID)
-	if not x then
+	local pos = { GetUnitPosition(targetUnitID) }
+	if not pos[1] then
 		return {}
 	end
 
-	local validNanos = {}
-	for nanoID, nanoData in pairs(nanoCache.turrets) do
-		if nanoID ~= targetUnitID then
-			local dx, dz = math.abs(nanoData.x - x), math.abs(nanoData.z - z)
-			local maxDist = math.max(dx, dz)
-			if maxDist <= (nanoData.buildDist - 5) then
-				table.insert(validNanos, nanoID)
+	local unitsNear = GetUnitsInCylinder(pos[1], pos[3], 1000, -2)
+	local unitIDs = {}
+	for _, id in ipairs(unitsNear) do
+		local dist = NANO_DEFS[GetUnitDefID(id)]
+		if dist ~= nil and targetUnitID ~= id then
+			if dist > GetUnitSeparation(targetUnitID, id, true) then
+				unitIDs[#unitIDs + 1] = id
 			end
 		end
 	end
-	return validNanos
+	return unitIDs
 end
 
 -- Visual indicator functions
@@ -189,16 +193,11 @@ local function findBlockersAtPosition(x, z, xsize, zsize, facing)
 	return blockers, areaX, areaZ
 end
 
-local function giveReclaimOrdersFromNanos(nanoIDs, targetUnitIDs)
-	if #nanoIDs == 0 or #targetUnitIDs == 0 then
-		return
-	end
-	for i = #nanoIDs, 2, -1 do
-		local j = math.random(1, i)
-		nanoIDs[i], nanoIDs[j] = nanoIDs[j], nanoIDs[i]
-	end
-	for i, tgt in ipairs(targetUnitIDs) do
-		GiveOrderToUnitArray({ nanoIDs[(i - 1) % #nanoIDs + 1] }, CMD_RECLAIM, { tgt }, {})
+local function giveReclaimOrdersFromNanos(targetUnitIDs)
+	for _, targetUnitID in ipairs(targetUnitIDs) do
+		local unitIDs = nanosNearUnit(targetUnitID)
+		CMD_CACHE[4] = targetUnitID
+		GiveOrderToUnitArray(unitIDs, CMD_INSERT, CMD_CACHE, ALT)
 	end
 end
 
@@ -276,24 +275,13 @@ function widget:GameFrame(n)
 						end
 						-- Execute reclaim
 						if shouldStartReclaim or shouldRetryReclaim then
-							if #p.nanos > 0 then
-								if shouldRetryReclaim then
-									local currentBlockers = findBlockersAtPosition(bx, bz, p.xsize, p.zsize, p.facing)
-									if #currentBlockers > 0 then
-										local retryNanos, retryNanosSet = {}, {}
-										for _, blk in ipairs(currentBlockers) do
-											for _, n in ipairs(nanosNearUnit(blk)) do
-												if not retryNanosSet[n] then
-													retryNanosSet[n] = true
-													table.insert(retryNanos, n)
-												end
-											end
-										end
-										giveReclaimOrdersFromNanos(retryNanos, currentBlockers)
-									end
-								else
-									giveReclaimOrdersFromNanos(p.nanos, p.blockers)
+							if shouldRetryReclaim then
+								local currentBlockers = findBlockersAtPosition(bx, bz, p.xsize, p.zsize, p.facing)
+								if #currentBlockers > 0 then
+									giveReclaimOrdersFromNanos(currentBlockers)
 								end
+							else
+								giveReclaimOrdersFromNanos(p.blockers)
 							end
 							pipeline.reclaimStarted[p.order], pipeline.lastReclaimAttempt[p.order] = true, currentFrame
 						end
@@ -412,15 +400,7 @@ function widget:CommandNotify(cmdID, cmdParams, cmdOptions)
 	if not capturedBuilders or #capturedBuilders == 0 then
 		return false
 	end
-	local allNanos, nanosSet = {}, {}
-	for _, blk in ipairs(blockers) do
-		for _, n in ipairs(nanosNearUnit(blk)) do
-			if not nanosSet[n] then
-				nanosSet[n] = true
-				table.insert(allNanos, n)
-			end
-		end
-	end
+
 	buildOrderCounter = buildOrderCounter + 1
 	local assignedBuilderID = nil
 	for _, builderID in ipairs(capturedBuilders) do
@@ -442,7 +422,6 @@ function widget:CommandNotify(cmdID, cmdParams, cmdOptions)
 		facing = cmdParams[4],
 		order = buildOrderCounter,
 		blockers = blockers,
-		nanos = allNanos,
 	})
 
 	-- Add visual indicator for this build order
@@ -501,7 +480,7 @@ function widget:DrawWorld()
 	gl.DepthTest(true)
 	gl.LineWidth(2)
 
-	local HEIGHT_OFFSET = 5 -- Raise lines above ground like LayoutPlanner
+	local HEIGHT_OFFSET = 5
 
 	for builderID, indicators in pairs(visualIndicators) do
 		for _, indicator in ipairs(indicators) do
