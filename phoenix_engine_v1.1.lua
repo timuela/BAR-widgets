@@ -60,11 +60,24 @@ local TARGET_UNITDEF_NAMES = {
 	"legnanotct3",
 }
 
-local TARGET_UNITDEF_IDS, builderDefs, NANO_DEFS = {}, {}, {}
+local BUILDABLE_UNITDEF_NAMES = {
+	"armafust3",
+	"corafust3",
+	"legafust3",
+}
+
+local TARGET_UNITDEF_IDS, builderDefs, NANO_DEFS, BUILDABLE_UNITDEF_IDS = {}, {}, {}, {}
 for _, name in ipairs(TARGET_UNITDEF_NAMES) do
 	local def = UnitDefNames and UnitDefNames[name]
 	if def then
 		TARGET_UNITDEF_IDS[def.id] = true
+	end
+end
+
+for _, name in ipairs(BUILDABLE_UNITDEF_NAMES) do
+	local def = UnitDefNames and UnitDefNames[name]
+	if def then
+		BUILDABLE_UNITDEF_IDS[def.id] = true
 	end
 end
 
@@ -368,12 +381,18 @@ function widget:CommandNotify(cmdID, cmdParams, cmdOptions)
 	if type(cmdID) ~= "number" or cmdID >= 0 or not isAutoReplaceEnabledForSelection() then
 		return false
 	end
+
+	local buildingDefID = -cmdID
+	if not BUILDABLE_UNITDEF_IDS[buildingDefID] then
+		return false
+	end
+
 	local bx, by, bz = tonumber(cmdParams[1]), tonumber(cmdParams[2]), tonumber(cmdParams[3])
 	if not (bx and by and bz) then
 		return false
 	end
 
-	local buildingDef = UnitDefs[-cmdID]
+	local buildingDef = UnitDefs[buildingDefID]
 	if not buildingDef then
 		Spring.Echo("  ERROR: buildingDef is nil!")
 		return false
