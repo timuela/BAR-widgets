@@ -193,7 +193,7 @@ end
 
 local function findBlockersAtPosition(x, z, xsize, zsize, facing)
 	local blockers = {}
-	local areaX, areaZ = xsize * 4 + 8, zsize * 4 + 8
+	local areaX, areaZ = xsize * 4, zsize * 4
 
 	for _, uid in ipairs(GetUnitsInRectangle(x - areaX, z - areaZ, x + areaX, z + areaZ)) do
 		if TARGET_UNITDEF_IDS[GetUnitDefID(uid)] and GetUnitTeam(uid) == GetMyTeamID() then
