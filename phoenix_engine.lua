@@ -76,15 +76,15 @@ for uDefID, uDef in pairs(UnitDefs) do
 end
 
 -- Configuration
-local BLOCKER_SEARCH_RADIUS = 100
 local PIPELINE_SIZE = 3
 local NANO_CACHE_UPDATE_INTERVAL = 90
-local RECLAIM_RETRY_DELAY = 60
-local MAX_RECLAIM_RETRIES = 50
+local RECLAIM_RETRY_DELAY = 10
+local MAX_RECLAIM_RETRIES = 200
 
 -- States
 local AUTO_REPLACE_ENABLED, builderPipelines, buildOrderCounter = {}, {}, 0
 local nanoCache = { turrets = {}, lastUpdate = 0, needsUpdate = true }
+local visualIndicators = {} -- Store visual indicators for each builder pipeline
 
 -- Helper functions
 local function getBuilderPipeline(builderID)
@@ -116,87 +116,89 @@ local function updateNanoCache()
 	nanoCache.lastUpdate, nanoCache.needsUpdate = Spring.GetGameFrame(), false
 end
 
-local function getCachedNanosNearPosition(x, z)
-	local nanoIDs = {}
-	for nanoID, nanoData in pairs(nanoCache.turrets) do
-		local dx, dz = nanoData.x - x, nanoData.z - z
-		local dist = math.sqrt(dx * dx + dz * dz)
-		-- Add small tolerance to prevent edge cases
-		if dist <= (nanoData.buildDist - 5) then
-			table.insert(nanoIDs, nanoID)
-		end
-	end
-	return nanoIDs
-end
-
 local function nanosNearUnit(targetUnitID)
 	local x, y, z = GetUnitPosition(targetUnitID)
 	if not x then
 		return {}
 	end
-	local nanoIDs = getCachedNanosNearPosition(x, z)
+
 	local validNanos = {}
-	for _, uid in ipairs(nanoIDs) do
-		if uid ~= targetUnitID then
-			local sep = GetUnitSeparation(targetUnitID, uid, true)
-			local nanoData = nanoCache.turrets[uid]
-			-- Use a small tolerance to prevent edge cases with floating point precision
-			if sep and nanoData and (sep <= nanoData.buildDist - 5) then
-				table.insert(validNanos, uid)
+	for nanoID, nanoData in pairs(nanoCache.turrets) do
+		if nanoID ~= targetUnitID then
+			local dx, dz = math.abs(nanoData.x - x), math.abs(nanoData.z - z)
+			local maxDist = math.max(dx, dz)
+			if maxDist <= (nanoData.buildDist - 5) then
+				table.insert(validNanos, nanoID)
 			end
 		end
 	end
 	return validNanos
 end
 
-local function findBlockersAtPosition(x, z, halfX, halfZ, facing)
+-- Visual indicator functions
+local function addVisualIndicator(builderID, x, z, buildingAreaX, buildingAreaZ)
+	if not visualIndicators[builderID] then
+		visualIndicators[builderID] = {}
+	end
+
+	local indicator = {
+		x = x,
+		z = z,
+		areaX = buildingAreaX,
+		areaZ = buildingAreaZ,
+		startTime = Spring.GetGameFrame(),
+	}
+
+	table.insert(visualIndicators[builderID], indicator)
+end
+
+local function removeVisualIndicator(builderID, x, z)
+	if not visualIndicators[builderID] then
+		return
+	end
+
+	for i = #visualIndicators[builderID], 1, -1 do
+		local indicator = visualIndicators[builderID][i]
+		if math.abs(indicator.x - x) < 1 and math.abs(indicator.z - z) < 1 then
+			table.remove(visualIndicators[builderID], i)
+		end
+	end
+
+	-- Clean up empty tables
+	if #visualIndicators[builderID] == 0 then
+		visualIndicators[builderID] = nil
+	end
+end
+
+local function clearAllVisualIndicators(builderID)
+	visualIndicators[builderID] = nil
+end
+
+local function findBlockersAtPosition(x, z, xsize, zsize, facing)
 	local blockers = {}
-	-- Use a larger search radius to find units in the area, not just overlapping
-	local searchRadius = math.max(halfX + BLOCKER_SEARCH_RADIUS, halfZ + BLOCKER_SEARCH_RADIUS, BLOCKER_SEARCH_RADIUS)
-	local maybe = GetUnitsInCylinder(x, z, searchRadius, GetMyTeamID())
+	local areaX, areaZ = xsize * 4 + 8, zsize * 4 + 8
 
-	for _, uid in ipairs(maybe) do
-		if TARGET_UNITDEF_IDS[GetUnitDefID(uid)] then
+	for _, uid in ipairs(GetUnitsInRectangle(x - areaX, z - areaZ, x + areaX, z + areaZ)) do
+		if TARGET_UNITDEF_IDS[GetUnitDefID(uid)] and GetUnitTeam(uid) == GetMyTeamID() then
 			local ux, _, uz = GetUnitPosition(uid)
-			if ux then
-				local unitDef = UnitDefs[GetUnitDefID(uid)]
-				if unitDef then
-					-- Get unit's footprint (convert to half-sizes for easier calculation)
-					local unitHalfX = (unitDef.footprintX or 1) / 2
-					local unitHalfZ = (unitDef.footprintZ or 1) / 2
-
-					-- Check if unit is within the building area OR within BLOCKER_SEARCH_RADIUS
-					local overlapX = math.abs(ux - x) < (halfX + unitHalfX)
-					local overlapZ = math.abs(uz - z) < (halfZ + unitHalfZ)
-					local withinRadius = math.sqrt((ux - x) ^ 2 + (uz - z) ^ 2) <= BLOCKER_SEARCH_RADIUS
-
-					-- Reclaim if overlapping OR within radius (for area clearing)
-					if (overlapX and overlapZ) or withinRadius then
-						table.insert(blockers, uid)
-					end
-				end
+			if ux and math.abs(ux - x) <= areaX and math.abs(uz - z) <= areaZ then
+				table.insert(blockers, uid)
 			end
 		end
 	end
-	return blockers
+	return blockers, areaX, areaZ
 end
 
 local function giveReclaimOrdersFromNanos(nanoIDs, targetUnitIDs)
 	if #nanoIDs == 0 or #targetUnitIDs == 0 then
 		return
 	end
-	local shuffledNanos = {}
-	for i = 1, #nanoIDs do
-		shuffledNanos[i] = nanoIDs[i]
-	end
-	for i = #shuffledNanos, 2, -1 do
+	for i = #nanoIDs, 2, -1 do
 		local j = math.random(1, i)
-		shuffledNanos[i], shuffledNanos[j] = shuffledNanos[j], shuffledNanos[i]
+		nanoIDs[i], nanoIDs[j] = nanoIDs[j], nanoIDs[i]
 	end
-	local nanoIndex = 1
-	for _, tgt in ipairs(targetUnitIDs) do
-		GiveOrderToUnitArray({ shuffledNanos[nanoIndex] }, CMD_RECLAIM, { tgt }, {})
-		nanoIndex = (nanoIndex % #shuffledNanos) + 1
+	for i, tgt in ipairs(targetUnitIDs) do
+		GiveOrderToUnitArray({ nanoIDs[(i - 1) % #nanoIDs + 1] }, CMD_RECLAIM, { tgt }, {})
 	end
 end
 
@@ -208,7 +210,13 @@ local function checkUnits(update)
 			found = true
 			if update then
 				local mode = CMD_AUTO_REPLACE_DESCRIPTION.params[1]
+				local wasEnabled = AUTO_REPLACE_ENABLED[id]
 				AUTO_REPLACE_ENABLED[id] = (mode ~= 0) and true or nil
+
+				-- Clear visual indicators when toggling off
+				if wasEnabled and not AUTO_REPLACE_ENABLED[id] then
+					clearAllVisualIndicators(id)
+				end
 			end
 		end
 	end
@@ -241,11 +249,9 @@ function widget:GameFrame(n)
 					table.sort(pipeline.pendingBuilds, function(a, b)
 						return a.order < b.order
 					end)
-					-- Fill pipeline
 					while #pipeline.currentlyProcessing < PIPELINE_SIZE and #pipeline.pendingBuilds > 0 do
 						table.insert(pipeline.currentlyProcessing, table.remove(pipeline.pendingBuilds, 1))
 					end
-					-- Process builds
 					local i = 1
 					while i <= #pipeline.currentlyProcessing do
 						local p = pipeline.currentlyProcessing[i]
@@ -261,7 +267,7 @@ function widget:GameFrame(n)
 								(currentFrame - lastAttempt) >= RECLAIM_RETRY_DELAY
 								and retries < MAX_RECLAIM_RETRIES
 							then
-								local remainingBlockers = findBlockersAtPosition(bx, bz, p.halfX, p.halfZ, p.facing)
+								local remainingBlockers = findBlockersAtPosition(bx, bz, p.xsize, p.zsize, p.facing)
 								if #remainingBlockers > 0 then
 									shouldRetryReclaim = true
 									pipeline.reclaimRetries[p.order] = retries + 1
@@ -272,7 +278,7 @@ function widget:GameFrame(n)
 						if shouldStartReclaim or shouldRetryReclaim then
 							if #p.nanos > 0 then
 								if shouldRetryReclaim then
-									local currentBlockers = findBlockersAtPosition(bx, bz, p.halfX, p.halfZ, p.facing)
+									local currentBlockers = findBlockersAtPosition(bx, bz, p.xsize, p.zsize, p.facing)
 									if #currentBlockers > 0 then
 										local retryNanos, retryNanosSet = {}, {}
 										for _, blk in ipairs(currentBlockers) do
@@ -312,12 +318,14 @@ function widget:GameFrame(n)
 								pipeline.reclaimStarted[p.order] = nil
 								pipeline.reclaimRetries[p.order] = nil
 								pipeline.lastReclaimAttempt[p.order] = nil
+								-- Remove visual indicator when build is completed
+								removeVisualIndicator(builderID, bx, bz)
 								table.remove(pipeline.currentlyProcessing, i)
 							else
 								i = i + 1
 							end
 						else
-							local blockers = findBlockersAtPosition(bx, bz, p.halfX, p.halfZ, p.facing)
+							local blockers = findBlockersAtPosition(bx, bz, p.xsize, p.zsize, p.facing)
 							if #blockers == 0 then
 								local aliveBuilders = {}
 								for _, uid in ipairs(p.builders) do
@@ -330,13 +338,15 @@ function widget:GameFrame(n)
 									GiveOrderToUnitArray(aliveBuilders, p.cmdID, p.params, { "shift" })
 									pipeline.buildingsUnderConstruction[p.order] = {
 										position = { bx, bz },
-										footprint = { p.halfX, p.halfZ },
+										footprint = { p.xsize / 2, p.zsize / 2 },
 										unitDefID = -p.cmdID,
 									}
 								else
 									pipeline.reclaimStarted[p.order] = nil
 									pipeline.reclaimRetries[p.order] = nil
 									pipeline.lastReclaimAttempt[p.order] = nil
+									-- Remove visual indicator when builders are dead
+									removeVisualIndicator(builderID, bx, bz)
 									table.remove(pipeline.currentlyProcessing, i)
 								end
 							else
@@ -379,15 +389,25 @@ function widget:CommandNotify(cmdID, cmdParams, cmdOptions)
 	if not (bx and by and bz) then
 		return false
 	end
+
 	local buildingDef = UnitDefs[-cmdID]
 	if not buildingDef then
+		Spring.Echo("  ERROR: buildingDef is nil!")
 		return false
 	end
-	local halfX, halfZ = (buildingDef.footprintX or 0) / 2, (buildingDef.footprintZ or 0) / 2
-	local blockers = findBlockersAtPosition(bx, bz, halfX, halfZ, cmdParams[4])
+
+	-- Get building size directly
+	local xsize, zsize = 0, 0
+	if buildingDef.xsize and buildingDef.zsize then
+		xsize, zsize = buildingDef.xsize, buildingDef.zsize
+		Spring.Echo(" (xsize/zsize): " .. buildingDef.xsize .. "x" .. buildingDef.zsize)
+	end
+
+	local blockers, buildingAreaX, buildingAreaZ = findBlockersAtPosition(bx, bz, xsize, zsize, cmdParams[4])
 	if #blockers == 0 then
 		return false
 	end
+
 	local capturedBuilders = GetSelectedUnits()
 	if not capturedBuilders or #capturedBuilders == 0 then
 		return false
@@ -417,20 +437,27 @@ function widget:CommandNotify(cmdID, cmdParams, cmdOptions)
 		builders = capturedBuilders,
 		cmdID = cmdID,
 		params = cmdParams,
-		halfX = halfX,
-		halfZ = halfZ,
+		xsize = xsize,
+		zsize = zsize,
 		facing = cmdParams[4],
 		order = buildOrderCounter,
 		blockers = blockers,
 		nanos = allNanos,
 	})
+
+	-- Add visual indicator for this build order
+	addVisualIndicator(assignedBuilderID, bx, bz, buildingAreaX, buildingAreaZ)
+
 	return true
 end
 
 -- Event handlers
 widget.UnitDestroyed = function(_, unitID)
 	AUTO_REPLACE_ENABLED[unitID] = nil
-	builderPipelines[unitID] = nil
+	if builderPipelines[unitID] then
+		clearAllVisualIndicators(unitID)
+		builderPipelines[unitID] = nil
+	end
 	if nanoCache.turrets[unitID] then
 		nanoCache.needsUpdate = true
 	end
@@ -459,4 +486,80 @@ end
 function widget:Shutdown()
 	widgetHandler.actionHandler:RemoveAction(self, "auto_replace", "p")
 	builderPipelines, buildOrderCounter, AUTO_REPLACE_ENABLED = {}, 0, {}
+	visualIndicators = {}
+end
+
+-- Visual rendering
+function widget:DrawWorld()
+	if not next(visualIndicators) then
+		return
+	end
+
+	local gl = gl
+	gl.PushAttrib(GL.ALL_ATTRIB_BITS)
+	gl.Color(1, 0.5, 0, 0.8) -- Orange
+	gl.DepthTest(true)
+	gl.LineWidth(2)
+
+	local HEIGHT_OFFSET = 5 -- Raise lines above ground like LayoutPlanner
+
+	for builderID, indicators in pairs(visualIndicators) do
+		for _, indicator in ipairs(indicators) do
+			local x, z = indicator.x, indicator.z
+			local areaX, areaZ = indicator.areaX, indicator.areaZ
+
+			-- Calculate rectangle corners
+			local x1 = x - areaX
+			local z1 = z - areaZ
+			local x2 = x + areaX
+			local z2 = z + areaZ
+
+			-- Get ground height for each corner
+			local y1 = Spring.GetGroundHeight(x1, z1) + HEIGHT_OFFSET
+			local y2 = Spring.GetGroundHeight(x2, z1) + HEIGHT_OFFSET
+			local y3 = Spring.GetGroundHeight(x2, z2) + HEIGHT_OFFSET
+			local y4 = Spring.GetGroundHeight(x1, z2) + HEIGHT_OFFSET
+
+			-- Draw rectangle outline
+			gl.BeginEnd(GL.LINE_LOOP, function()
+				gl.Vertex(x1, y1, z1)
+				gl.Vertex(x2, y2, z1)
+				gl.Vertex(x2, y3, z2)
+				gl.Vertex(x1, y4, z2)
+			end)
+
+			-- Add corner markers for better visibility
+			local cornerSize = 8
+			gl.BeginEnd(GL.LINES, function()
+				-- Bottom-left corner
+				gl.Vertex(x1, y1, z1)
+				gl.Vertex(x1 + cornerSize, y1, z1)
+				gl.Vertex(x1, y1, z1)
+				gl.Vertex(x1, y1, z1 + cornerSize)
+
+				-- Bottom-right corner
+				gl.Vertex(x2, y2, z1)
+				gl.Vertex(x2 - cornerSize, y2, z1)
+				gl.Vertex(x2, y2, z1)
+				gl.Vertex(x2, y2, z1 + cornerSize)
+
+				-- Top-right corner
+				gl.Vertex(x2, y3, z2)
+				gl.Vertex(x2 - cornerSize, y3, z2)
+				gl.Vertex(x2, y3, z2)
+				gl.Vertex(x2, y3, z2 - cornerSize)
+
+				-- Top-left corner
+				gl.Vertex(x1, y4, z2)
+				gl.Vertex(x1 + cornerSize, y4, z2)
+				gl.Vertex(x1, y4, z2)
+				gl.Vertex(x1, y4, z2 - cornerSize)
+			end)
+		end
+	end
+
+	gl.LineWidth(1)
+	gl.Color(1, 1, 1, 1)
+	gl.DepthTest(true)
+	gl.PopAttrib()
 end
