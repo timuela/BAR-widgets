@@ -42,29 +42,24 @@ Spring.I18N.set("en.ui.orderMenu.auto_replace_on", "Auto Replace On")
 Spring.I18N.set("en.ui.orderMenu.auto_replace_tooltip", "Automatically reclaim blocking units when placing buildings")
 
 -- Target definitions
-local TARGET_UNITDEF_NAMES = {
-	"armnanotc",
-	"armnanotcplat",
-	"armnanotct2",
-	"armnanotc2plat",
-	"armnanotct3",
-	"cornanotc",
-	"cornanotcplat",
-	"cornanotct2",
-	"cornanotc2plat",
-	"cornanotct3",
-	"legnanotc",
-	"legnanotcplat",
-	"legnanotct2",
-	"legnanotct2plat",
-	"legnanotct3",
-}
+local factions = { "arm", "cor", "leg" }
 
-local BUILDABLE_UNITDEF_NAMES = {
-	"armafust3",
-	"corafust3",
-	"legafust3",
-}
+local reclaimableTargets = { "nanotc", "nanotcplat", "nanotct2", "nanotc2plat", "nanotct3", "wint2" }
+local buildableTypes = { "afust3", "mmkrt3", "adveconvt3" }
+
+local TARGET_UNITDEF_NAMES = {}
+local BUILDABLE_UNITDEF_NAMES = {}
+
+for _, faction in ipairs(factions) do
+	for _, reclaimableTarget in ipairs(reclaimableTargets) do
+		table.insert(TARGET_UNITDEF_NAMES, faction .. reclaimableTarget)
+	end
+end
+for _, faction in ipairs({ "arm", "cor", "leg" }) do
+	for _, buildableType in ipairs(buildableTypes) do
+		table.insert(BUILDABLE_UNITDEF_NAMES, faction .. buildableType)
+	end
+end
 
 local TARGET_UNITDEF_IDS, builderDefs, NANO_DEFS, BUILDABLE_UNITDEF_IDS = {}, {}, {}, {}
 for _, name in ipairs(TARGET_UNITDEF_NAMES) do
