@@ -44,8 +44,21 @@ Spring.I18N.set("en.ui.orderMenu.auto_replace_tooltip", "Automatically reclaim b
 -- Target definitions
 local factions = { "arm", "cor", "leg" }
 
-local reclaimableTargets = { "nanotc", "nanotcplat", "nanotct2", "nanotc2plat", "nanotct3", "wint2" }
-local buildableTypes = { "afust3", "mmkrt3", "adveconvt3" }
+local reclaimableTargets = {
+	"nanotc",
+	"nanotcplat",
+	"nanotct2",
+	"nanotc2plat",
+	"nanotct3",
+	"wint2",
+	"afus",
+}
+local buildableTypes = {
+	"afust3",
+	"mmkrt3",
+	"adveconvt3",
+	"flak",
+}
 
 local TARGET_UNITDEF_NAMES = {}
 local BUILDABLE_UNITDEF_NAMES = {}
@@ -87,7 +100,9 @@ end
 
 -- Configuration
 local RESTRICT_BUILDABLE = true
-local PIPELINE_SIZE = 3
+local DEFAULT_PIPELINE_SIZE = 3
+local MEDIUM_PIPELINE_SIZE = 6
+local SMALL_PIPELINE_SIZE = 20
 local NANO_CACHE_UPDATE_INTERVAL = 90
 local RECLAIM_RETRY_DELAY = 150
 local MAX_RECLAIM_RETRIES = 200
@@ -99,7 +114,25 @@ local visualIndicators = {}
 local ALT = { "alt" }
 local CMD_CACHE = { 0, CMD_RECLAIM, CMD_OPT_SHIFT, 0 }
 
--- Helper functions
+local function getPipelineSize(unitDefID)
+	local unitDef = UnitDefs[unitDefID]
+	if not unitDef then
+		return DEFAULT_PIPELINE_SIZE
+	end
+
+	local footprintArea = (unitDef.xsize or 4) * (unitDef.zsize or 4)
+
+	-- EFUS-sized buildings (16x16 = 256) get pipeline size 3
+	-- Smaller buildings get larger pipelines
+	if footprintArea >= 256 then
+		return DEFAULT_PIPELINE_SIZE
+	elseif footprintArea >= 64 then -- 8x8 buildings
+		return MEDIUM_PIPELINE_SIZE
+	else -- Smaller buildings
+		return SMALL_PIPELINE_SIZE
+	end
+end
+
 local function getBuilderPipeline(builderID)
 	if not builderPipelines[builderID] then
 		builderPipelines[builderID] = {
@@ -283,7 +316,16 @@ function widget:GameFrame(n)
 			table.sort(pipeline.pendingBuilds, function(a, b)
 				return a.order < b.order
 			end)
-			while #pipeline.currentlyProcessing < PIPELINE_SIZE and #pipeline.pendingBuilds > 0 do
+
+			-- Get pipeline size for the first pending build
+			local currentPipelineSize = DEFAULT_PIPELINE_SIZE
+			if #pipeline.pendingBuilds > 0 then
+				currentPipelineSize = getPipelineSize(-pipeline.pendingBuilds[1].cmdID)
+			elseif #pipeline.currentlyProcessing > 0 then
+				currentPipelineSize = getPipelineSize(-pipeline.currentlyProcessing[1].cmdID)
+			end
+
+			while #pipeline.currentlyProcessing < currentPipelineSize and #pipeline.pendingBuilds > 0 do
 				pipeline.currentlyProcessing[#pipeline.currentlyProcessing + 1] =
 					table.remove(pipeline.pendingBuilds, 1)
 			end
